@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Poly(pub Vec<PolyTerm>);
@@ -9,7 +9,7 @@ pub struct PolyTerm {
     pub vars: Vec<PolyVar>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct PolyVar {
     pub sym: String,
     pub deg: usize,
@@ -18,7 +18,18 @@ pub struct PolyVar {
 impl Poly {
     pub fn simplify(&mut self) {
         // remove terms with zero coeff
-        // add coeffs of like terms
+        self.0.retain(|term| term.coeff != 0.);
+
+        // add together coeffs of like terms
+        let mut m = HashMap::<Vec<PolyVar>, f64>::new();
+        while let Some(term) = self.0.pop() {
+            let entry = m.entry(term.vars).or_insert(0.);
+            *entry += term.coeff;
+        }
+
+        for (vars, coeff) in m.into_iter() {
+            self.0.push(PolyTerm { coeff, vars })
+        }
     }
 
     pub fn substitute(&mut self, sym: &str, val: f64) {
@@ -117,7 +128,9 @@ mod tests {
         ]);
 
         println!("{}", p);
-        p.substitute("x", 2.);
+        p.substitute("x", 0.);
+        println!("{}", p);
+        p.simplify();
         println!("{}", p);
     }
 }
