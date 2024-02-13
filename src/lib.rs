@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    ops::{Add, AddAssign, Neg, Sub, SubAssign},
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Poly(pub Vec<PolyTerm>);
@@ -26,7 +30,6 @@ impl Poly {
             let entry = m.entry(term.vars).or_insert(0.);
             *entry += term.coeff;
         }
-
         for (vars, coeff) in m.into_iter() {
             self.0.push(PolyTerm { coeff, vars })
         }
@@ -51,6 +54,47 @@ impl Poly {
                 }
             }
         }
+    }
+}
+
+impl Add for Poly {
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self.0.extend(rhs.0);
+        self
+    }
+}
+
+impl AddAssign for Poly {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0.extend(rhs.0)
+    }
+}
+
+impl Neg for Poly {
+    type Output = Self;
+
+    fn neg(mut self) -> Self::Output {
+        for term in &mut self.0 {
+            term.coeff *= -1.;
+        }
+        self
+    }
+}
+
+impl Sub for Poly {
+    type Output = Self;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self.0.extend(rhs.neg().0);
+        self
+    }
+}
+
+impl SubAssign for Poly {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.extend(rhs.neg().0);
     }
 }
 
@@ -142,5 +186,10 @@ mod tests {
         println!("{}", p);
         p.simplify();
         println!("{}", p);
+
+        let p2 = Poly(vec![]);
+
+        p += p2;
+        // let p3 = p + p2;
     }
 }
