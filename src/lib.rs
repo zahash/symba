@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::Display,
-    ops::{Add, AddAssign, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign},
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -22,9 +22,36 @@ pub struct PolyVar {
 impl Poly {
     pub fn simplify(&mut self) {
         // remove terms with zero coeff
+        // x2 + 0y2 + 3xy => x2 + 3xy
         self.0.retain(|term| term.coeff != 0.);
 
+        // remove vars with zero degree
+        // 4x0y2 => 4y2
+        for term in &mut self.0 {
+            term.vars.retain(|var| var.deg != 0);
+        }
+
+        // add together degrees of vars with same symbol
+        // 4x2x3y4 => 4x5y4
+        let mut m = HashMap::<String, usize>::new();
+        for term in &mut self.0 {
+            while let Some(var) = term.vars.pop() {
+                let entry = m.entry(var.sym).or_insert(0);
+                *entry += var.deg;
+            }
+            for (sym, deg) in m.drain() {
+                term.vars.push(PolyVar { sym, deg })
+            }
+        }
+
+        // sort vars
+        // 4x2y + 10yx2 => 4x2y + 10x2y
+        for term in &mut self.0 {
+            term.vars.sort_by(|var1, var2| var1.sym.cmp(&var2.sym));
+        }
+
         // add together coeffs of like terms
+        // 4x2y + 10x2y => 14x2y
         let mut m = HashMap::<Vec<PolyVar>, f64>::new();
         while let Some(term) = self.0.pop() {
             let entry = m.entry(term.vars).or_insert(0.);
@@ -34,12 +61,8 @@ impl Poly {
             self.0.push(PolyTerm { coeff, vars })
         }
 
-        // remove vars with zero degree
-        for term in &mut self.0 {
-            term.vars.retain(|var| var.deg != 0);
-        }
-
         // sort according to degree desc.
+        // 3a2 + 1 + a3 + a => a3 + 3a2 + a + 1
         self.0
             .sort_by_key(|term| term.vars.iter().map(|var| var.deg).sum::<usize>());
         self.0.reverse();
@@ -95,6 +118,29 @@ impl Sub for Poly {
 impl SubAssign for Poly {
     fn sub_assign(&mut self, rhs: Self) {
         self.0.extend(rhs.neg().0);
+    }
+}
+
+impl Mul<&Self> for &Poly {
+    type Output = Poly;
+
+    fn mul(self, rhs: &Self) -> Self::Output {
+        let mut res = Poly(vec![]);
+        for term1 in &self.0 {
+            for term2 in &rhs.0 {
+                let term = PolyTerm {
+                    coeff: term1.coeff * term2.coeff,
+                    vars: {
+                        let mut vars = vec![];
+                        vars.extend(term1.vars.clone());
+                        vars.extend(term2.vars.clone());
+                        vars
+                    },
+                };
+                res.0.push(term);
+            }
+        }
+        res
     }
 }
 
