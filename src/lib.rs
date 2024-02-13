@@ -44,7 +44,7 @@ impl Poly {
             }
         }
 
-        // sort vars
+        // order vars
         // 4x2y + 10yx2 => 4x2y + 10x2y
         for term in &mut self.0 {
             term.vars.sort_by(|var1, var2| var1.sym.cmp(&var2.sym));
@@ -77,6 +77,50 @@ impl Poly {
                 }
             }
         }
+    }
+
+    pub fn degree(&self) -> usize {
+        self.0
+            .iter()
+            .map(|term| &term.vars)
+            .map(|vars| vars.iter().map(|var| var.deg).sum::<usize>())
+            .max()
+            .unwrap_or_default()
+    }
+
+    pub fn differentiate(&mut self, sym: &str) {
+        self.simplify();
+
+        for term in &mut self.0 {
+            match term.vars.iter_mut().find(|var| var.sym == sym) {
+                Some(var) => {
+                    term.coeff *= var.deg as f64;
+                    var.deg -= 1;
+                }
+                None => term.coeff = 0.,
+            }
+        }
+
+        self.simplify();
+    }
+
+    pub fn integrate(&mut self, sym: &str) {
+        self.simplify();
+
+        for term in &mut self.0 {
+            match term.vars.iter_mut().find(|var| var.sym == sym) {
+                Some(var) => {
+                    var.deg += 1;
+                    term.coeff /= var.deg as f64;
+                }
+                None => term.vars.push(PolyVar {
+                    sym: sym.to_string(),
+                    deg: 1,
+                }),
+            }
+        }
+
+        self.simplify();
     }
 }
 
