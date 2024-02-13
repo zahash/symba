@@ -30,6 +30,16 @@ impl Poly {
         for (vars, coeff) in m.into_iter() {
             self.0.push(PolyTerm { coeff, vars })
         }
+
+        // remove vars with zero degree
+        for term in &mut self.0 {
+            term.vars.retain(|var| var.deg != 0);
+        }
+
+        // sort according to degree desc.
+        self.0
+            .sort_by_key(|term| term.vars.iter().map(|var| var.deg).sum::<usize>());
+        self.0.reverse();
     }
 
     pub fn substitute(&mut self, sym: &str, val: f64) {
@@ -128,7 +138,7 @@ mod tests {
         ]);
 
         println!("{}", p);
-        p.substitute("x", 0.);
+        p.substitute("x", 2.);
         println!("{}", p);
         p.simplify();
         println!("{}", p);
